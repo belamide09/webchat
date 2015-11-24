@@ -1,0 +1,132 @@
+<!DOCTYPE HTML>
+<html lang="en">
+<head>
+<title>PeerJS chat demo</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<meta http-equiv="Content-Language" content="en-us">
+<script type="text/javascript" src="//cdn.temasys.com.sg/adapterjs/0.11.x/adapter.min.js"></script>
+<script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jquery/1.8/jquery.min.js"></script>
+<script src="peer.js"> </script>
+
+<style>
+.video {
+	width: 500px;
+	height: 400px;
+	background: #000;
+}
+</style>
+</head>
+<body>
+
+<div class="pure-u-2-3" id="video-container">
+  <video id="their-video" autoplay class="video"></video> ME 
+  <video id="my-video" muted="true" autoplay class="video"></video> CHATMATE	
+</div>
+
+
+</body>
+<script>
+
+var peer = new Peer ({key: '0fa4531f-819b-4f3f-84d9-3a6c185e5f84'});
+var partner_id;
+var media_stream;
+
+var userList = [];
+
+peer.on ('open', function (id) {
+  console.log ('My peer ID is : ' + id);
+});
+
+var conn;
+
+function connect(id) {
+
+	partner_id = id;
+	conn = peer.connect (partner_id);
+	peer.on ('connection', function (conn) {
+
+		start(partner_id);
+
+
+	});
+
+	conn.on ('open', function () {
+	  // Receive messages
+	  conn.on ('data', function (data) {
+
+	    console.log ('Received', data);
+	    
+	  });
+
+	  // Send a message
+	  conn.send ('Hello!');
+	});
+
+	conn.on ('close', function () {
+
+		alert(conn.id + " has disconnected!");
+
+	});
+
+}
+
+
+function start() {
+
+	navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
+	navigator.getUserMedia({video: true, audio: true}, function(stream) {
+
+		attachMediaStream( $('#my-video')[0], stream );
+
+		// Call a peer, providing our mediaStream
+		var call = peer.call (partner_id,stream);
+
+		console.log(call);
+
+		peer.on ('call', function (call) {
+			console.log('Call request receive');
+		  // Answer the call, providing our mediaStream
+		  call.answer (stream);
+		});
+
+
+		call.on ('stream', function (stream) {
+			attachMediaStream( $('#their-video')[0], stream );
+		  // `Stream` is the MediaStream of the remote peer.
+		  // Here you'd add it to an HTML video / canvas element.
+		});
+
+		peer.listAllPeers (function (list) {
+		     // And stores the (for example) PeerID list acquired in array
+		    for (var cnt = 0; cnt <list.length; cnt ++) {
+		        userList.push (list [cnt]);
+		    }
+		});
+
+
+	}, function(err) {
+
+	  console.log('Failed to get local stream' ,err);
+
+	});
+}
+
+
+// conn.send ({
+//   strings: 'hi!',
+//   numbers: 150,
+//   arrays: [1,2,3],
+//   evenBinary: new Blob ([1,2,3]),
+//   andMore: {bool: true}
+// });
+
+// var peer = new Peer ({
+//   config: {'iceServers': [
+//     {Url: 'stun: stun.skyway.io: 3478'},
+//     {Url: 'turn: homeo@turn.bistri.com: 80', credential: 'homeo'}
+//   ]} /* Sample servers, please use appropriate ones */
+// });
+		
+
+</script>
+</html>
