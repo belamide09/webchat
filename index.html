@@ -6,68 +6,70 @@
   <script type="text/javascript" src="https://skyway.io/dist/0.3/peer.js"></script>
 
 <script>
-// Compatibility shim
-navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
-
-var peer = new Peer({
-  key: '0fa4531f-819b-4f3f-84d9-3a6c185e5f84',
-  debug: 0
-});
-var c;
-
-// Handle a connection object.
-function connect(c) {
-  // Handle a chat connection.
-  if (c.label === 'chat') {
-
-    $("#callto-id").val(c.peer);
-    c.on('data', function(data) {
-      $("#make-call").hide();
-      $("#end-call").show();
-      $("#conversations").append('<div><span class="peer">' + c.peer + '</span>: ' + data + '</div>');
-    });
-    c.on('close', function() {
-      $("#callto-id").val("");
-      $("#make-call").show();
-      $("#end-call").show();
-      $("#conversations").html("");
-
-      peer.destroy();
-      peer = new Peer({
-        key: '0fa4531f-819b-4f3f-84d9-3a6c185e5f84',
-        debug: 0
-      });
-      alert(c.peer + ' has left the chat.');
-    });
-  }
-}
 
 $(document).ready(function() {
 
-  getVideoStream();
+  // Compatibility shim
+  navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
+
+  var peer = new Peer({
+    key: '0fa4531f-819b-4f3f-84d9-3a6c185e5f84',
+    debug: 2
+  });
   // Show this peer's ID.
   peer.on('open', function(id){
     $('#my-id').text(id);
   });
+  var c;
 
-  // Receiving a call
-  peer.on('call', function(call){
-    // Answer the call automatically (instead of prompting user)
-    call.answer(window.localStream);
-    startCall(call);
-    console.log( 'test' );
-  });
-  peer.on('error', function(err){
-    alert(err.message);
-    ShowCHatDetail();
-  });
 
-  // Await connections from others
-  peer.on('connection', connect);
+  peerEvts();
+  getVideoStream();
 
-  peer.on('error', function(err) {
-    console.log(err);
-  })
+  function peerEvts() {
+    // Receiving a call
+    peer.on('call', function(call){
+      console.log( call );
+      // Answer the call automatically (instead of prompting user)
+      call.answer(window.localStream);
+      startCall(call);
+    });
+    peer.on('error', function(err){
+      alert(err.message);
+      ShowCHatDetail();
+    });
+
+    // Await connections from others
+    peer.on('connection', connect);
+
+    peer.on('error', function(err) {
+      console.log(err);
+    })
+  }
+
+
+  // Handle a connection object.
+  function connect(c) {
+    // Handle a chat connection.
+    if (c.label === 'chat') {
+
+      $("#callto-id").val(c.peer);
+      c.on('data', function(data) {
+        $("#make-call").hide();
+        $("#end-call").show();
+        $("#conversations").append('<div><span class="peer">' + c.peer + '</span>: ' + data + '</div>');
+      });
+      c.on('close', function() {
+        $("#callto-id").val("");
+        $("#conversations").html("");
+
+        window.existingCall.close();
+        peer.connections = {};
+        $("#make-call").show();
+        $("#end-call").hide();
+      });
+    }
+  }
 
   // Connect to a peer
   $('#make-call').click(function() {
@@ -94,21 +96,31 @@ $(document).ready(function() {
 
   // End call
   $("#end-call").click(function() {
-
+    var peer_id = peer.id;
+    window.existingCall.close();
+    peer.disconnect();
     peer.destroy();
-    peer = new Peer({
+    peer = new Peer(peer_id,{
       key: '0fa4531f-819b-4f3f-84d9-3a6c185e5f84',
-      debug: 0
+      debug: 2
     });
+    peerEvts();
+    // // peer.disconnect();
+    // peer = new Peer({
+    //   key: '0fa4531f-819b-4f3f-84d9-3a6c185e5f84',
+    //   debug: 2
+    // });
+    // peerEvts();
+
+    // init();
+
+    // window.existingCall.close();
+    // peer.connections = {};
+    // $("#make-call").show();
+    // $("#end-call").hide();
 
   })
 
-  // Close a connection.
-  $('#close').click(function() {
-    eachActiveConnection(function(c) {
-      c.close();
-    });
-  });
 
   $('#send').submit(function(e) {
     e.preventDefault();
@@ -138,7 +150,9 @@ $(document).ready(function() {
     }
   }
 
-  function startCall (call) {
+  function startCall (call) { 
+
+    console.log( call );
 
     // Hang up on an existing call if present
     if (window.existingCall) {
@@ -160,6 +174,9 @@ $(document).ready(function() {
     call.on('close', ShowCHatDetail);
     // $('#step1, #step2').hide();
     $('#step3').show();
+
+    $("#make-call").hide();
+    $("#end-call").show();
   }
 
   function getVideoStream() {
