@@ -87,3 +87,9 @@ Copyright (c) Nicolas Gallagher and Jonathan Neal
 	width: 100%;
 	height: 30px;
 }
+#their-video-volume {
+	float: left;
+	margin-top: -450px;
+	margin-left: 50px;
+	height: 400px;
+}
