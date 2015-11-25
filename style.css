@@ -65,6 +65,9 @@ Copyright (c) Nicolas Gallagher and Jonathan Neal
 #my-id {
   font-weight: bold;
 }
+#end-call {
+	display: none;
+}
 
 #conversations-container {
 	width: 300px;
