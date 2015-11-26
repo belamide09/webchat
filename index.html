@@ -12,6 +12,7 @@
 var peer;
 var c;
 $(document).ready(function() {
+  init();
   $('#their-video-volume').slider({
     orientation: "vertical",
     value: 1,
@@ -33,24 +34,41 @@ $(document).ready(function() {
   navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
   var peer_id = Math.random().toString();
   peer_id = peer_id.substring(2,7);
-  // var peer = new Peer(peer_id,{
-  //   key: '0fa4531f-819b-4f3f-84d9-3a6c185e5f84',
-  //   debug: 2
-  // });
-  peer = new Peer(peer_id,{
-    host: '192.168.0.187',
-    port: '9000',
-    path: '/',
-    debug: 2
-  });
-  // Show this peer's ID.
-  peer.on('open', function(id){
-    $('#my-id').text(id);
-  });
 
-
-  peerEvts();
-  getVideoStream();
+  function init() {
+    $.ajax({
+      type: 'HEAD',
+      url: 'http://192.168.0.187:9000',
+      success: function() {
+        console.log( " Self server " );
+        peer = new Peer(peer_id,{
+          host: '192.168.0.187',
+          port: '9000',
+          path: '/',
+          debug: 2
+        });
+        // Show this peer's ID.
+        peer.on('open', function(id){
+          $('#my-id').text(id);
+        });
+        peerEvts();
+        getVideoStream();
+      },
+      error: function() {
+        console.log( " Cloud server " );
+        peer = new Peer(peer_id,{
+         key: '0fa4531f-819b-4f3f-84d9-3a6c185e5f84',
+          debug: 2
+        });
+        // Show this peer's ID.
+        peer.on('open', function(id){
+          $('#my-id').text(id);
+        });
+        peerEvts();
+        getVideoStream();
+      }
+    });
+  }
 
   function peerEvts() {
     // Receiving a call
@@ -70,6 +88,11 @@ $(document).ready(function() {
     peer.on('error', function(err) {
       console.log(err);
     })
+
+    // Show this peer's ID.
+    peer.on('open', function(id){
+      $('#my-id').text(id);
+    });
   }
 
 
