@@ -32,16 +32,16 @@ $(document).ready(function() {
   navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
   var peer_id = Math.random().toString();
   peer_id = peer_id.substring(2,7);
-  var peer = new Peer(peer_id,{
-    key: '0fa4531f-819b-4f3f-84d9-3a6c185e5f84',
-    debug: 2
-  });
   // var peer = new Peer(peer_id,{
-  //   host: 'localhost',
-  //   port: '9000',
-  //   path: '/',
+  //   key: '0fa4531f-819b-4f3f-84d9-3a6c185e5f84',
   //   debug: 2
   // });
+  var peer = new Peer(peer_id,{
+    host: 'localhost',
+    port: '9000',
+    path: '/',
+    debug: 2
+  });
   my_peer = peer;
   // Show this peer's ID.
   peer.on('open', function(id){
