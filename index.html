@@ -1,14 +1,14 @@
 <html>
 <head>
   <title>PeerJS - Video chat example</title>
-  <link rel="stylesheet" href="style.css">
-  <script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jquery/1.8/jquery.min.js"></script>
-  <script type="text/javascript" src="https://skyway.io/dist/0.3/peer.js"></script>
-  <link rel="stylesheet" href="//code.jquery.com/ui/1.11.4/themes/smoothness/jquery-ui.css">
-  <script src="//code.jquery.com/ui/1.11.4/jquery-ui.js"></script>
+  <link rel="stylesheet" href="css/style.css">
+  <script type="text/javascript" src="js/jquery.min.js"></script>
+  <script type="text/javascript" src="js/peer.js"></script>
+  <link rel="stylesheet" href="css/jquery-ui.css">
+  <script src="js/jquery-ui.js"></script>
 
 <script>
-
+var my_peer;
 $(document).ready(function() {
 
   $('#their-video-volume').slider({
@@ -30,11 +30,19 @@ $(document).ready(function() {
 
   // Compatibility shim
   navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
-
-  var peer = new Peer({
+  var peer_id = Math.random().toString();
+  peer_id = peer_id.substring(2,7);
+  var peer = new Peer(peer_id,{
     key: '0fa4531f-819b-4f3f-84d9-3a6c185e5f84',
     debug: 2
   });
+  // var peer = new Peer(peer_id,{
+  //   host: 'localhost',
+  //   port: '9000',
+  //   path: '/',
+  //   debug: 2
+  // });
+  my_peer = peer;
   // Show this peer's ID.
   peer.on('open', function(id){
     $('#my-id').text(id);
@@ -79,11 +87,9 @@ $(document).ready(function() {
         $("#conversations").append('<div><span class="peer">' + c.peer + '</span>: ' + data + '</div>');
       });
       c.on('close', function() {
+        window.existingCall.close();
         $("#callto-id").val("");
         $("#conversations").html("");
-
-        window.existingCall.close();
-        peer.connections = {};
         $("#make-call").show();
         $("#end-call").hide();
       });
@@ -115,29 +121,11 @@ $(document).ready(function() {
 
   // End call
   $("#end-call").click(function() {
-    var peer_id = peer.id;
+    // Close all connections
+    my_peer._cleanup();
     window.existingCall.close();
-    peer.disconnect();
-    peer.destroy();
-    peer = new Peer(peer_id,{
-      key: '0fa4531f-819b-4f3f-84d9-3a6c185e5f84',
-      debug: 2
-    });
-    peerEvts();
-    // // peer.disconnect();
-    // peer = new Peer({
-    //   key: '0fa4531f-819b-4f3f-84d9-3a6c185e5f84',
-    //   debug: 2
-    // });
-    // peerEvts();
-
-    // init();
-
-    // window.existingCall.close();
-    // peer.connections = {};
-    // $("#make-call").show();
-    // $("#end-call").hide();
-
+    $("#make-call").show();
+    $("#end-call").hide();
   })
 
 
@@ -170,9 +158,6 @@ $(document).ready(function() {
   }
 
   function startCall (call) { 
-
-    console.log( call );
-
     // Hang up on an existing call if present
     if (window.existingCall) {
       window.existingCall.close();
