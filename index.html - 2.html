@@ -1,0 +1,301 @@
+<html>
+<head>
+  <title>PeerJS - Video chat example</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script type="text/javascript" src="js/jquery.min.js"></script>
+  <script type="text/javascript" src="js/peer.js"></script>
+  <link rel="stylesheet" href="css/jquery-ui.css">
+  <script src="js/jquery-ui.js"></script>
+
+<script>
+
+var peer;
+var c;
+$(document).ready(function() {
+  init();
+  $('#their-video-volume').slider({
+    orientation: "vertical",
+    value: 1,
+    min: 0,
+    max: 1,
+    range: 'min',
+    animate: true,
+    step: .1,
+    slide: function() {
+      var volume = $('#their-video-volume').slider('value');
+      if ( volume == 0.1 ) {
+        volume = 0;
+      }
+      $("#their-video")[0].volume = volume;
+    }
+  });
+
+  // Compatibility shim
+  navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
+
+  function init() {
+    $.ajax({
+      type: 'HEAD',
+      url: 'http://192.168.0.187:9000',
+      success: function() {
+        console.log( " Self server " );
+        peer = new Peer({
+          host: '192.168.0.187',
+          port: '9000',
+          path: '/',
+          debug: 2
+        });
+        peerEvts();
+        getVideoStream();
+      },
+      error: function() {
+        console.log( " Cloud server " );
+        peer = new Peer({
+         key: '0fa4531f-819b-4f3f-84d9-3a6c185e5f84',
+          debug: 2
+        });
+        peerEvts();
+        getVideoStream();
+      }
+    });
+  }
+
+  function peerEvts() {
+    // Receiving a call
+    peer.on('call', function(call){
+      // Answer the call automatically (instead of prompting user)
+      call.answer(window.localStream);
+      startCall(call);
+    });
+    peer.on('error', function(err){
+      // alert(err.message);
+      ShowCHatDetail();
+    });
+
+    // Await connections from others
+    peer.on('connection', connect);
+
+    peer.on('error', function(err) {
+      console.log(err);
+    })
+
+    // Show this peer's ID.
+    peer.on('open', function(id){
+      $('#my-id').text(id);
+    });
+  }
+
+
+  // Handle a connection object.
+  function connect(c) {
+    // Handle a chat connection.
+    if (c.label === 'chat') {
+
+      $("#callto-id").val(c.peer);
+      c.on('data', function(data) {
+        $("#make-call").hide();
+        $("#end-call").show();
+        $("#conversations").append('<div><span class="peer">' + c.peer + '</span>: ' + data + '</div>');
+      });
+      c.on('close', function() {
+        window.existingCall.close();
+        $("#callto-id").val("");
+        $("#conversations").html("");
+        $("#make-call").show();
+        $("#end-call").hide();
+      });
+    }
+  }
+
+  // Connect to a peer
+  $('#make-call').click(function() {
+    navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
+
+    var requestedPeer = $('#callto-id').val();
+    $.ajax({
+      type: 'HEAD',
+      url: 'http://192.168.0.187:9000',
+      success: function() {
+        console.log( " Self server " );
+        peer = new Peer(peer.id,{
+          host: '192.168.0.187',
+          port: '9000',
+          path: '/',
+          debug: 2
+        });
+        // Create 2 connections, one labelled chat and another labelled file.
+        c = peer.connect(requestedPeer, {
+          label: 'chat',
+          serialization: 'none',
+          metadata: {message: 'hi i want to chat with you!'}
+        });
+        c.on('open', function() {
+          connect(c);
+        });
+        c.on('error', function(err) { alert(err); });
+        var call = peer.call(requestedPeer, window.localStream);
+        startCall(call);
+      },
+      error: function() {
+        console.log( " Cloud server " );
+        peer = new Peer({
+         key: '0fa4531f-819b-4f3f-84d9-3a6c185e5f84',
+          debug: 2
+        });
+        // Create 2 connections, one labelled chat and another labelled file.
+        c = peer.connect(requestedPeer, {
+          label: 'chat',
+          serialization: 'none',
+          metadata: {message: 'hi i want to chat with you!'}
+        });
+        c.on('open', function() {
+          connect(c);
+        });
+        c.on('error', function(err) { alert(err); });
+        var call = peer.call(requestedPeer, window.localStream);
+        startCall(call);
+      }
+    });
+  });
+
+  // End call
+  $("#end-call").click(function() {
+    // Close all connections
+    peer._cleanup();
+    window.existingCall.close();
+    $("#make-call").show();
+    $("#end-call").hide();
+  })
+
+
+  $('#send').submit(function(e) {
+    e.preventDefault();
+    // For each active connection, send the message.
+    var msg = $('.message').val();
+    if ( msg.trim() !== "" ) {
+      eachActiveConnection(function(c, $c) {
+        if (c.label === 'chat') {
+          c.send(msg);
+          $('#conversations').append('<div><span class="you">You: </span>' + msg
+            + '</div>');
+        }
+      });
+      $('.message').val('');
+      $('.message').focus();
+    }
+  });
+
+  // Goes through each active peer and calls FN on its connections.
+  function eachActiveConnection(fn) {
+    var actives = $('.active');
+    var peerId = $("#callto-id").val();
+    var conns = peer.connections[peerId];
+    for (var i = 0, ii = conns.length; i < ii; i += 1) {
+      var conn = conns[i];
+      fn(conn, $(this));
+    }
+  }
+
+  function startCall (call) { 
+    // Hang up on an existing call if present
+    if (window.existingCall) {
+      window.existingCall.close();
+    }
+
+    // Wait for stream on the call, then set peer video display
+    call.on('stream', function(stream){
+      $('#their-video').prop('src', URL.createObjectURL(stream));
+    });
+
+    // UI stuff
+    window.existingCall = call;
+    conn = peer.connect(call.peer);
+    conn.on('data',function(data) {
+      console.log( data );
+    })
+    $('#their-id').text(call.peer);
+    call.on('close', ShowCHatDetail);
+    // $('#step1, #step2').hide();
+    $('#step3').show();
+
+    $("#make-call").hide();
+    $("#end-call").show();
+  }
+
+  function getVideoStream() {
+    // Get audio/video stream
+    navigator.getUserMedia({audio: true, video: true}, function(stream){
+      // Set your video displays
+      $('#my-video').prop('src', URL.createObjectURL(stream));
+
+      window.localStream = stream;
+      ShowCHatDetail();
+    }, function(){ $('#step1-error').show(); });
+  }
+
+  function ShowCHatDetail() {
+    $('#step1, #step3').hide();
+    $('#step2').show();
+  }
+
+});
+
+// Make sure things clean up properly.
+
+window.onunload = window.onbeforeunload = function(e) {
+  if (!!peer && !peer.destroyed) {
+    peer.destroy();
+  }
+};
+
+</script>
+</head>
+
+<body>
+
+  <div class="pure-g">
+
+  <!-- Video area -->
+  <div class="pure-u-2-3" id="video-container">
+    <video id="their-video" autoplay></video>
+    <video id="my-video" muted="true" autoplay></video>
+    <div id="their-video-volume"></div>
+  </div>
+
+  <!-- Steps -->
+  <div class="pure-u-1-3">
+    <h2>PeerJS Video Chat</h2>
+
+    <!-- Get local audio/video stream -->
+    <div id="step1">
+      <p>Please click `allow` on the top of the screen so we can access your webcam and microphone for calls.</p>
+      <div id="step1-error">
+        <p>Failed to access the webcam and microphone. Make sure to run this demo on an http server and click allow when asked for permission by the browser.</p>
+        <a href="#" class="pure-button pure-button-error" id="step1-retry">Try again</a>
+      </div>
+    </div>
+
+    <!-- Make calls to others -->
+    <div id="step2">
+      <p>Your id: <span id="my-id">...</span></p>
+      <p>Share this id with others so they can call you.</p>
+      <h3>Make a call</h3>
+      <div class="pure-form">
+        <input type="text" placeholder="Call user id..." id="callto-id">
+        <a href="#" class="pure-button pure-button-success" id="make-call">Call</a>
+        <a href="#" class="pure-button pure-button-error" id="end-call">End</a>
+      </div>
+    </div>
+
+   <div id="conversations-container">
+      <legend> Conversations </legend>
+      <div id="conversations"></div>
+      <div class="chatbox-inputs">
+        <form action="" method="post" id="send">
+          <input type="text" class="message" placeholder="Enter message">
+        </form>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
