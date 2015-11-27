@@ -123,6 +123,7 @@ $(document).ready(function() {
           path: '/',
           debug: 2
         });
+        peerEvts();
         // Create 2 connections, one labelled chat and another labelled file.
         c = peer.connect(requestedPeer, {
           label: 'chat',
@@ -142,6 +143,7 @@ $(document).ready(function() {
          key: '0fa4531f-819b-4f3f-84d9-3a6c185e5f84',
           debug: 2
         });
+        peerEvts();
         // Create 2 connections, one labelled chat and another labelled file.
         c = peer.connect(requestedPeer, {
           label: 'chat',

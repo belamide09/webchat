@@ -120,26 +120,54 @@ $(document).ready(function() {
   // Connect to a peer
   $('#make-call').click(function() {
     navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
-    peer = new Peer(peer_id,{
-      host: '192.168.0.187',
-      port: '9000',
-      path: '/',
-      debug: 0
-    });
-    peerEvts();
+
     var requestedPeer = $('#callto-id').val();
-    // Create 2 connections, one labelled chat and another labelled file.
-    c = peer.connect(requestedPeer, {
-      label: 'chat',
-      serialization: 'none',
-      metadata: {message: 'hi i want to chat with you!'}
+    $.ajax({
+      type: 'HEAD',
+      url: 'http://192.168.0.187:9000',
+      success: function() {
+        console.log( " Self server " );
+        peer = new Peer(peer.id,{
+          host: '192.168.0.187',
+          port: '9000',
+          path: '/',
+          debug: 2
+        });
+        peerEvts();
+        // Create 2 connections, one labelled chat and another labelled file.
+        c = peer.connect(requestedPeer, {
+          label: 'chat',
+          serialization: 'none',
+          metadata: {message: 'hi i want to chat with you!'}
+        });
+        c.on('open', function() {
+          connect(c);
+        });
+        c.on('error', function(err) { alert(err); });
+        var call = peer.call(requestedPeer, window.localStream);
+        startCall(call);
+      },
+      error: function() {
+        console.log( " Cloud server " );
+        peer = new Peer({
+         key: '0fa4531f-819b-4f3f-84d9-3a6c185e5f84',
+          debug: 2
+        });
+        peerEvts();
+        // Create 2 connections, one labelled chat and another labelled file.
+        c = peer.connect(requestedPeer, {
+          label: 'chat',
+          serialization: 'none',
+          metadata: {message: 'hi i want to chat with you!'}
+        });
+        c.on('open', function() {
+          connect(c);
+        });
+        c.on('error', function(err) { alert(err); });
+        var call = peer.call(requestedPeer, window.localStream);
+        startCall(call);
+      }
     });
-    c.on('open', function() {
-      connect(c);
-    });
-    c.on('error', function(err) { alert(err); });
-    var call = peer.call(requestedPeer, window.localStream);
-    startCall(call);
   });
 
   // End call
